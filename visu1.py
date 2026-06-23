@@ -20,14 +20,6 @@ grid = pd.DataFrame(
 )
 p = grid.merge(p, on=["preusuel", "annais"], how="left").fillna({"nombre": 0})
 
-stats = (
-    p.groupby("preusuel")["nombre"]
-    .agg(max_par_an="max", min_par_an="min", moyenne="mean")
-    .reset_index()
-)
-
-p = p.merge(stats, on="preusuel", how="left")
-
 brush = alt.selection_interval(encodings=["x"])
 scatter_brush = alt.selection_interval()
 legend_sel = alt.selection_point(fields=["preusuel"], on="click", empty=True)
@@ -35,29 +27,28 @@ legend_sel = alt.selection_point(fields=["preusuel"], on="click", empty=True)
 base = alt.Chart(p)
 
 detail = (
-    base.mark_area(interpolate="monotone")
+    alt.Chart(p).mark_area(interpolate="monotone")
+    .transform_filter(brush)
+    .transform_joinaggregate(
+        max_par_an="max(nombre)",
+        min_par_an="min(nombre)",
+        groupby=["preusuel"],
+    )
+    .transform_filter(scatter_brush)
     .encode(
         x=alt.X("annais:Q", title="Année", axis=alt.Axis(format="d")),
-        y=alt.Y(
-            "nombre:Q",
-            stack=True,
-            title="Naissance",
-            axis=alt.Axis(labels=True, ticks=True),
-        ),
-        color=alt.Color(
-            "preusuel:N", title="Prénom", scale=alt.Scale(scheme="category20")
-        ),
+        y=alt.Y("nombre:Q", stack=True, title="Naissance",
+                axis=alt.Axis(labels=True, ticks=True, format="~s")),
+        color=alt.Color("preusuel:N", title="Prénom", scale=alt.Scale(scheme="category20")),
         opacity=alt.condition(legend_sel, alt.value(0.9), alt.value(0.12)),
         tooltip=["preusuel:N", "annais:Q", "nombre:Q"],
     )
-    .transform_filter(brush)
-    .transform_filter(scatter_brush)
     .add_params(legend_sel)
     .properties(width=800, height=380)
 )
 
 overview = (
-    base.mark_area(opacity=0.5)
+    alt.Chart(p).mark_area(opacity=0.5)
     .encode(
         x=alt.X("annais:Q", title=None, axis=alt.Axis(format="d")),
         y=alt.Y("sum(nombre):Q", title=None, axis=None),
@@ -67,29 +58,24 @@ overview = (
 )
 
 scatter = (
-    alt.Chart(stats)
+    alt.Chart(p)
+    .transform_filter(brush)
+    .transform_aggregate(
+        max_par_an="max(nombre)",
+        min_par_an="min(nombre)",
+        moyenne="mean(nombre)",
+        groupby=["preusuel"],
+    )
     .mark_circle()
     .encode(
-        x=alt.X(
-            "max_par_an:Q", title="Max par année"
-        ),  # , scale=alt.Scale(type='log')),
-        y=alt.Y(
-            "min_par_an:Q", title="Min par année"
-        ),  # , scale=alt.Scale(type='log')),
-        size=alt.Size(
-            "moyenne:Q", legend=alt.Legend(orient="right", title="Moyenne / an")
-        ),
-        color=alt.Color(
-            "preusuel:N", legend=None, scale=alt.Scale(scheme="category20")
-        ),
-        opacity=alt.condition(
-            scatter_brush & legend_sel,  # both box and click drive the fade
-            alt.value(0.9),
-            alt.value(0.15),
-        ),
+        x=alt.X("max_par_an:Q", title="Max par année"),
+        y=alt.Y("min_par_an:Q", title="Min par année"),
+        size=alt.Size("moyenne:Q", legend=alt.Legend(orient="right", title="Moyenne / an")),
+        color=alt.Color("preusuel:N", legend=None, scale=alt.Scale(scheme="category20")),
+        opacity=alt.condition(scatter_brush & legend_sel, alt.value(0.9), alt.value(0.15)),
         tooltip=["preusuel:N", "max_par_an:Q", "min_par_an:Q", "moyenne:Q"],
     )
-    .add_params(scatter_brush, legend_sel)  # capture both gestures here
+    .add_params(scatter_brush, legend_sel)
     .properties(width=300, height=380, title="Statistiques par prénom")
 )
 

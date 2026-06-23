@@ -5,11 +5,10 @@ Three interactive visualizations exploring French baby name data across time, ge
 ## Visualizations
 
 ### 1. Popularity Over Time (`visu1.py`)
-A dual-panel interactive area chart showing name popularity trends from 1900 to 2020.
-The top names are selected as the most popular in each year.
-- **Top panel:** Stacked area chart filtered by the year range selected in the bottom panel
-- **Bottom panel:** Overview of total births across all years, drag to select a time window
-- Click a name in the legend to highlight it; double-click to reset
+This visualization explores the popularity of French first names from 1900 to 2020, combining three linked views. The central streamgraph shows how the volume of births per name evolves over time, stacked to convey both individual trajectories and the overall total. The bottom strip acts as a period selector: brushing a range of years filters the main chart and recomputes the statistics shown elsewhere. The scatter plot on the right summarizes each name over the selected period, plotting its maximum yearly count against its minimum, with point size encoding the average. Selecting a rectangular region in the scatter filters the streamgraph to names matching that statistical profile. For instance, isolating names that were consistently present versus those with brief spikes. Clicking any band or point highlights that name across both views.
+
+**Strengths**. The coordinated views let a reader move fluidly between the temporal shape of a name's popularity and its aggregate profile, and the period brush makes those statistics conditional on the window of interest rather than fixed over the whole century. The scatter's max/min/mean encoding surfaces structural differences between names, perennial staples, sudden fads, slow risers, that are hard to read off the streamgraph alone.
+Weaknesses. With many names stacked, the streamgraph becomes dense and individual bands are hard to follow, and the categorical color palette repeats once the name pool grows large, so color alone doesn't uniquely identify a name. Because the minimum is computed over a zero-filled grid, most names sit near zero on the scatter's y-axis unless a short, recent window is selected, which can crowd points along the baseline. The view favors absolute birth counts, so long-dominant names occupy disproportionate vertical space regardless of their relative share in any given year.
 
 ### 2. Geographical Distribution (`visu2.py`)
 Three synchronized panels exploring how names vary across French departments.
