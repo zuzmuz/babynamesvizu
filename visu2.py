@@ -10,6 +10,12 @@ names = pd.read_csv("dpt2020.csv", sep=";")
 names.drop(names[names.preusuel == '_PRENOMS_RARES'].index, inplace=True)
 names.drop(names[names.dpt == 'XX'].index, inplace=True)
 
+# --- NOUVEAU : Exclusion de la Corse et des Outre-mer ---
+# On exclut 2A et 2B
+names = names[~names['dpt'].isin(['2A', '2B', '20'])]
+# On exclut tout ce qui commence par 97 ou 98 (en s'assurant que ce sont des chaînes de caractères)
+names = names[~names['dpt'].astype(str).str.startswith(('97', '98'))]
+
 # --- Chargement des données géographiques ---
 depts = gpd.read_file('departements-version-simplifiee.geojson')
 depts_geojson = json.loads(depts.to_json())
@@ -40,7 +46,7 @@ gn['ratio'] = gn['prop_dept'] / gn['prop_nationale']
 # --- Top 30 par volume par département ---
 top30 = (
     gn.sort_values('nombre', ascending=False)
-    .groupby('dpt').head(30)
+    .groupby('dpt').head(15)
     .reset_index(drop=True)
 )
 
@@ -54,13 +60,16 @@ top15 = (
     .assign(base=1.0)
 )
 
+# NOUVEAU : On récupère le ratio maximum de toute la France pour fixer l'échelle
+max_ratio = top15['ratio'].max()
+
 # --- Sélection sur 'dept_code' créé par transform_calculate sur la carte ---
 dept_selection = alt.selection_point(
     name='dept_sel',
     fields=['dept_code'],
     on='click',
     clear='dblclick',
-    empty='none'
+    empty=False
 )
 
 # --- Carte ---
@@ -68,7 +77,7 @@ map_chart = (
     alt.Chart(
         alt.InlineData(values=depts_geojson, format=alt.DataFormat(property='features', type='json'))
     )
-    .mark_geoshape(stroke='white')
+    .mark_geoshape()
     .transform_calculate(dept_code='datum.properties.code')
     .transform_lookup(
         lookup='dept_code',
@@ -81,7 +90,12 @@ map_chart = (
             alt.Tooltip('total_dept:Q', title='Naissances', format=','),
         ],
         color=alt.Color('total_dept:Q', title='Naissances', scale=alt.Scale(scheme='blues')),
-        opacity=alt.condition(dept_selection, alt.value(1), alt.value(0.35)),
+        
+        # --- Nouvelles conditions de contour ---
+        stroke=alt.condition(dept_selection, alt.value('red'), alt.value('white')),
+        strokeWidth=alt.condition(dept_selection, alt.value(3), alt.value(0.5)),
+        
+        # (L'opacité conditionnelle a été retirée pour garder la carte 100% visible)
     )
     .add_params(dept_selection)
     .project('mercator')
@@ -107,7 +121,7 @@ pie_chart = (
             alt.Tooltip('prop_nationale:Q', title='% national', format='.2%'),
         ],
     )
-    .properties(width=320, height=320, title='Top 30 du département')
+    .properties(width=320, height=320, title='Top 15 du département')
 )
 
 # --- Bar chart : top 15 par ratio, filtré par sélection ---
@@ -116,11 +130,18 @@ bar_chart = (
     .mark_bar()
     .transform_filter(dept_selection)
     .encode(
-        x=alt.X('base:Q', title='× la moyenne nationale', scale=alt.Scale(domainMin=1, zero=False)),
+        # On remplace domainMin=1 par un domaine fixe [1, max_ratio]
+        x=alt.X('base:Q', title='× la moyenne nationale', 
+                scale=alt.Scale(domain=[1, max_ratio], zero=False)),
         x2=alt.X2('ratio:Q'),
         y=alt.Y('preusuel:N', title='Prénom',
-                 sort=alt.EncodingSortField(field='ratio', order='descending')),
-        color=alt.Color('ratio:Q', scale=alt.Scale(scheme='orangered', domainMin=1), legend=None),
+                 sort=alt.EncodingSortField(field='ratio', order='descending'),
+                 axis=alt.Axis(minExtent=150)),
+        
+        # Optionnel mais recommandé : on peut aussi fixer l'échelle de couleur 
+        # pour qu'elle soit cohérente partout !
+        color=alt.Color('ratio:Q', scale=alt.Scale(scheme='orangered', domain=[1, max_ratio]), legend=None),
+        
         tooltip=[
             alt.Tooltip('preusuel:N', title='Prénom'),
             alt.Tooltip('ratio:Q', title='× la moyenne nationale', format='.2f'),
@@ -132,8 +153,26 @@ bar_chart = (
     .properties(width=320, height=380, title='Top 15 sur-représentés vs France')
 )
 
+# --- Affichage dynamique du nom du département ---
+text_chart = (
+    alt.Chart(
+        alt.InlineData(values=depts_geojson, format=alt.DataFormat(property='features', type='json'))
+    )
+    .mark_text(fontSize=18, fontWeight='bold', align='center', baseline='middle')
+    .transform_calculate(dept_code='datum.properties.code') # Nécessaire pour que le filtre fonctionne
+    .transform_filter(dept_selection)                       # On applique la même sélection
+    .encode(
+        text='properties.nom:N'                             # On affiche le nom du département
+    )
+    .properties(width=450, height=50)                       # Même largeur que la carte
+)
+
 # --- Composition ---
-chart = (map_chart | (pie_chart & bar_chart)).resolve_scale(color='independent')
+# On groupe la carte et le texte dynamique ensemble (verticalement)
+map_block = (map_chart & text_chart)
+
+# On assemble le bloc de gauche avec les graphiques de droite (horizontalement)
+chart = (map_block | (pie_chart & bar_chart)).resolve_scale(color='independent')
 chart.save('carte_prenoms_france.html', inline=True)
 
 print("Export terminé : carte_prenoms_france.html")
