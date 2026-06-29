@@ -17,12 +17,27 @@ Three synchronized panels exploring how names vary across French departments.
 - **Pie chart (top-right):** Top 30 most common names in the selected department
 - **Bar chart (bottom-right):** Top 15 names most over-represented in the selected department compared to the national average (shown as a ratio multiplier)
 
+we made the following refinements:
+
+- The pie chart now shows only 15 names instead of 30
+- The scale and colorscale of the bar chart are now unified for all departments
+- The map's selection is not anymore showed by changing the color but by a red delimitation
+- The name of the department has been made constantly visible
+
+
 ### 3. Unisex Names (`visu3.py`)
 A scatter plot on logarithmic scales identifying truly unisex names (at least 200 births in each gender and a max/min gender ratio ≤ 50:1).
 - X-axis: total male births (log scale)
 - Y-axis: total female births (log scale)
 - The diagonal reference line marks a perfect 1:1 gender split
 - Hover over any point to see the name and exact counts
+
+We changed two things to this visualization:
+
+- First, we decided  to add the time dimension that was missing in our first implementation. That was a choice we made, but more than half of the commentators on the blog advised us to add it. We figured it was important after all and implemented it. It takes the form of a button "All time", showing our initial diagram by default (unisex names over the whole period), and showing the same diagram (just the axis scales have changed) over a range of 10 years when pressed. The user can then use the slider to change the center year of the range. They clearly see the points move as they increase or decrease the year. They can therefore easily take a look at the evolution of some unisex name.
+- We also added some graphical variable: our points are now showed on color. While not adding information, it gives insights more easily and quickly. The colors scale shows the ratio between the two coordinates. It improves visual design by just adding a graphical variable that is separable with others and makes the information clearer without overloading.
+
+These two features were missing to our initial implementation and improve it ; we knew the first one was a drawback of our visualization, which was confirmed by blog comments. For the second one, we had not thought about this "lacking feature" : the advice were very useful for that.
 
 ## Data
 
