@@ -40,7 +40,7 @@ names_by_year = (
 all_time_toggle = alt.binding_checkbox(name="All time: ")
 all_time_select = alt.param(name="all_time", value=True, bind=all_time_toggle)
 
-year_slider = alt.binding_range(min=1905, max=2020, step=1, name="Central year: ")
+year_slider = alt.binding_range(min=1905, max=2020, step=1, name="Range of 10 years centered on: ")
 year_select = alt.param(name="yr", value=1960, bind=year_slider)
 
 # --- Création des points ---
